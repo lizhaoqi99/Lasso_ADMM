@@ -1,5 +1,5 @@
-### heavily inspired by Dr. Boyd's MATLAB program                                      ###
-### which can be found at https://web.stanford.edu/~boyd/papers/admm/lasso/lasso.html  ###
+### Inspired by Dr. Boyd's MATLAB program                                      
+### which can be found at https://web.stanford.edu/~boyd/papers/admm/lasso/lasso.html
 
 # helper functions
 L1norm <- function(x) {
@@ -10,38 +10,44 @@ L2norm <- function(x) {
   return(sqrt(sum(x^2)))
 }
 
-# definition from https://math.stackexchange.com/questions/471339/derivation-of-soft-thresholding-operator-proximal-operator-of-l-1-norm
 soft_thres <- function(x, lambda) {
   prox <- sign(x) * pmax(rep(0, length(x)), abs(x)-lambda)
   return(prox)
 }
 
-objective <- function(A, b, x, z, lambda) {
-  m <- A %*% x - b 
-  p <- 1/2 * t(m) %*% m + lambda * L1norm(z)
+objective <- function(A, b, x, lambda) {
+  m <- A %*% x - b
+  p <- 1/2 * t(m) %*% m + lambda * L1norm(x)
   return(p)
 }
 
-
 # main function
-# info from text p.43
+# background knowledge from text p.43
+# text: https://web.stanford.edu/~boyd/papers/pdf/admm_distr_stats.pdf
 ADMM_lasso <- function(A,b,lambda,rho,iter=1000,e.abs=1E-4,e.rel=1E-2){
+  # A: design matrix
+  # b: response vector
+  # lambda: penalty parameter for the primal problem
+  # rho: penalty parameter for the augmented Lagrangian
+  # iter: max number of iterations
+  # e.abs: absolute tolerance stopping constant
+  # e.rel: relative tolerance stopping constant
+  
   n <- nrow(A) 
   p <- ncol(A)
   
   # initialize coefficient matrix X 
   X <- matrix(0, nrow=iter, ncol=p) 
-  #X[1,] <- rep(0, p)
-  X[1,] <- rnorm(p)
+  X[1,] <- rep(0, p)
   
   # initialize Z and U matrices
-  Z <- matrix(0, nrow=iter, ncol=p) 
+  Z <- matrix(0, nrow=iter, ncol=p)  
   U <- rep(0, p)   
   
   # initialize objective function
   obj <- rep(0, iter)
-  #obj[1] <- objective(A, b, X[1,], Z[1,], lambda)
-  obj[1] <- 0
+  obj[1] <- objective(A, b, X[1,], lambda)
+  # obj[1] <- 0
   
   # compute (AtA+pI)^-1 (for x update) which is fixed
   AtA <- t(A) %*% A
@@ -67,7 +73,7 @@ ADMM_lasso <- function(A,b,lambda,rho,iter=1000,e.abs=1E-4,e.rel=1E-2){
     X[k,] <- inv_m %*% (Atb + rho * (Z[k-1,]-U))
     Z[k,] <- soft_thres(X[k,] + U, lambda/rho) # z update
     U <- U + X[k,] - Z[k,] # dual update
-    obj[k] <- objective(A, b, X[k,], Z[k,], lambda) # update objective
+    obj[k] <- objective(A, b, X[k,], lambda) # update objective
     
     # calculate residuals for iteration k
     r <- X[k,] - Z[k,] # update primal residual
@@ -99,4 +105,3 @@ ADMM_lasso <- function(A,b,lambda,rho,iter=1000,e.abs=1E-4,e.rel=1E-2){
               "r.norms"=r.norms,"s.norms"=s.norms)
   return(res)
 }
-
